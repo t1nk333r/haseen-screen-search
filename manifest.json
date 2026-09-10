@@ -96,5 +96,8 @@
         "label": "Temporary upload host (uguu, 0x0, litterbox)"
       }
     ]
+  },
+  "omarchy": {
+    "clonedFrom": "t1nk33r.screen-search"
   }
 }
