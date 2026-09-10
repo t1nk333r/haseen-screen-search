@@ -55,17 +55,84 @@ function actionsFor(payload, providerName, caps) {
   return list
 }
 
-function findEntry(config, id) {
-  if (!config || typeof config !== "object") return {}
-  var layout = config.bar && config.bar.layout ? config.bar.layout : {}
-  var sections = ["left", "center", "right"]
-  for (var s = 0; s < sections.length; s++) {
-    var arr = layout[sections[s]] || []
-    for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].id === id) return arr[i]
+var SECTIONS = ["left", "center", "right"]
+
+// Every placement of one id in the layout, at any depth. Depth 0 is a section
+// entry; deeper is a widget hosted inside another widget's `items[]`, which is
+// how a drawer (t1nk33r.nook) carries the widgets it absorbed. A bare string
+// entry carries no settings and so is not a placement that can hold any.
+function collectPlacements(list, id, depth, out) {
+  if (!list || typeof list.length !== "number") return out
+  for (var i = 0; i < list.length; i++) {
+    var entry = list[i]
+    if (!entry || typeof entry !== "object") continue
+    if (entry.id === id) out.push({ depth: depth, entry: entry })
+    if (entry.items) collectPlacements(entry.items, id, depth + 1, out)
   }
-  var plugins = config.plugins || []
-  for (var p = 0; p < plugins.length; p++) if (plugins[p] && plugins[p].id === id) return plugins[p]
-  return {}
+  return out
+}
+
+function markerFor(config, id) {
+  var plugins = config && config.plugins
+  if (!plugins || typeof plugins.length !== "number") return null
+  for (var i = 0; i < plugins.length; i++)
+    if (plugins[i] && typeof plugins[i] === "object" && plugins[i].id === id) return plugins[i]
+  return null
+}
+
+// The plugin's settings, merged in the precedence shell.qml updateEntryInline()
+// writes in, so what is read back is what a settings change landed on:
+//
+//   items   a widget a drawer hosts (`bar.layout.<section>[].items[]`). The
+//           host's writer never reaches into a drawer, so this is the weakest
+//           layer and the only one that is not a write target.
+//   plugins the plugins[] marker, the fallback target when no top-level
+//           bar.layout entry matches the id.
+//   layout  a top-level object entry in bar.layout.<section>: the preferred
+//           write target, and the value that wins.
+//
+// Sibling placements at the same depth cannot normally exist (allowMultiple is
+// false), so the first one found wins. `{}` means nothing resolved -- an unread
+// document looks the same, which is why the caller keeps the last good one.
+function findEntry(config, id) {
+  var out = {}
+  if (!config || typeof config !== "object" || !id) return out
+  var layout = config.bar && config.bar.layout ? config.bar.layout : {}
+  var placements = []
+  for (var s = 0; s < SECTIONS.length; s++) collectPlacements(layout[SECTIONS[s]], id, 0, placements)
+
+  var top = null
+  var nested = []
+  for (var p = 0; p < placements.length; p++) {
+    if (placements[p].depth === 0) {
+      if (top === null) top = placements[p].entry
+      continue
+    }
+    nested.push(placements[p])
+  }
+  // Deepest first, so a shallower host's entry overrides the one it nests.
+  nested.sort(function(left, right) { return right.depth - left.depth })
+
+  var layers = nested.map(function(placement) { return placement.entry })
+  var marker = markerFor(config, id)
+  if (marker !== null) layers.push(marker)
+  if (top !== null) layers.push(top)
+  for (var l = 0; l < layers.length; l++)
+    for (var key in layers[l]) out[key] = layers[l][key]
+  return out
+}
+
+// The settings document, parsed where it can be tested instead of inside a QML
+// binding: a malformed or half-written shell.json has to come back as null, not
+// as a throw that takes the binding down. Null is "unreadable", never "no
+// settings" -- an empty document is unreadable too.
+function shellConfigIn(text) {
+  var raw = String(text === undefined || text === null ? "" : text)
+  if (raw.trim() === "") return null
+  var parsed = null
+  try { parsed = JSON.parse(raw) } catch (e) { return null }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null
+  return parsed
 }
 
 // Layer-shell anchor booleans for the OSD window. An axis with no anchored

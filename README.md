@@ -33,7 +33,12 @@ bottom-right).
 
 Switching provider from the right-click menu takes effect immediately — no
 restart. The choice is stored inline on the widget's entry in
-`~/.config/omarchy/shell.json`, the single source of truth every part reads.
+`~/.config/omarchy/shell.json`, the single source of truth every part reads:
+the bar widget takes the entry the shell injects, the CLI reads the file per
+invocation, and the overlay reads the document itself through a watched
+`FileView` (the plugin API has no `shellConfig`, and its `barConfig` copy is
+taken before your file is parsed and does not include the `items[]` entry a
+drawer hosts).
 
 ## Keybindings (added by `install.sh`)
 

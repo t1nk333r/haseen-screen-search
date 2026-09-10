@@ -12,7 +12,8 @@ new Function("exports", src + `
   exports.actionsFor = actionsFor; exports.findEntry = findEntry;
   exports.anchorsFor = anchorsFor; exports.summarize = summarize;
   exports.messageForExit = messageForExit;
-  exports.pluginDirFromUrl = pluginDirFromUrl;`)(M)
+  exports.pluginDirFromUrl = pluginDirFromUrl;
+  exports.shellConfigIn = shellConfigIn;`)(M)
 
 let pass = 0, fail = 0
 function eq(got, want, label) {
@@ -85,6 +86,53 @@ eq(M.findEntry(cfg, "t1nk33r.screen-search").provider, "bing", "findEntry bar se
 eq(M.findEntry(cfg, "p1"), { id: "p1" }, "findEntry plugins[]")
 eq(M.findEntry(cfg, "missing"), {}, "findEntry missing -> {}")
 eq(M.findEntry(null, "x"), {}, "findEntry null config -> {}")
+
+// ---- findEntry: the shell.json document (plan 117) ----------------------
+// The overlay used to ask the plugin façade for `shell.shellConfig`, a
+// property that exists on the host's shell.qml and not on
+// services/PluginShellApi.qml. The lookup therefore got no document at all --
+// `settings` was {} and every setting fell back to its manifest default while
+// shell.json said otherwise. These rows pin the two document shapes the host
+// actually writes: a bar-section entry, and one a drawer hosts in its items[].
+const onBarDoc = { version: 1,
+  bar: { layout: { left: [], center: [], right: [
+    { id: "t1nk33r.screen-search", provider: "bing" }] } },
+  plugins: [{ id: "t1nk33r.screen-search" }] }
+eq(M.findEntry(onBarDoc, "t1nk33r.screen-search").provider, "bing",
+  "findEntry document: a bar-section entry resolves")
+
+// t1nk33r.nook hosts this widget, so its settings live in the drawer's items[]
+// and the plugins[] marker beside it is bare. A document reader that only walks
+// bar.layout's top level sees neither value.
+const hostedDoc = { version: 1,
+  bar: { layout: { left: [], center: [], right: [
+    { id: "t1nk33r.nook", items: [{ id: "t1nk33r.screen-search", osdPosition: "top-right" }] }] } },
+  plugins: [{ id: "t1nk33r.screen-search" }] }
+const hostedEntry = M.findEntry(hostedDoc, "t1nk33r.screen-search")
+eq(hostedEntry.osdPosition, "top-right", "findEntry document: a drawer-hosted items[] entry resolves")
+ok(Object.keys(hostedEntry).length > 1, "findEntry document: the settings object is non-empty")
+eq(M.anchorsFor(hostedEntry.osdPosition), { top: true, right: true },
+  "findEntry document: the resolved setting is the one the OSD renders with")
+eq(M.findEntry(hostedDoc, "t1nk33r.other"), {}, "findEntry document: an absent id -> {}")
+
+// A top-level entry is the host's preferred write target, so where both shapes
+// exist the value a write lands on is the value read back.
+const bothShapes = { version: 1,
+  bar: { layout: { left: [], center: [], right: [{ id: "x", osdPosition: "top-right" }] } },
+  plugins: [{ id: "x", osdPosition: "bottom-right" }] }
+eq(M.findEntry(bothShapes, "x").osdPosition, "top-right",
+  "findEntry: a bar-section entry wins over the plugins[] marker")
+const nestedEntry = M.findEntry({ bar: { layout: { right: [
+  { id: "h", items: [{ id: "x", a: 1 }, { id: "h2", items: [{ id: "x", b: 2 }] }] }] } } }, "x")
+eq([nestedEntry.a, nestedEntry.b], [1, 2], "findEntry: a placement nested two drawers deep resolves")
+
+// ---- shellConfigIn: the guarded parse ----------------------------------
+// A shell.json caught mid-replace must not throw inside the settings binding.
+eq(M.shellConfigIn('{"version":1,"plugins":[]}'), { version: 1, plugins: [] }, "shellConfigIn parses a document")
+eq(M.shellConfigIn('{"version":1'), null, "shellConfigIn malformed -> null")
+eq(M.shellConfigIn(""), null, "shellConfigIn empty -> null")
+eq(M.shellConfigIn("[]"), null, "shellConfigIn non-object -> null")
+eq(M.shellConfigIn(undefined), null, "shellConfigIn undefined -> null")
 
 // ---- anchorsFor (window-level layer anchors; center = unanchored) ------
 eq(M.anchorsFor("center"), {}, "anchors center")

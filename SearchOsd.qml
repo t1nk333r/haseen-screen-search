@@ -21,12 +21,62 @@ Item {
   readonly property string pluginDir: Model.pluginDirFromUrl(Qt.resolvedUrl("."))
   readonly property string cli: pluginDir + "/bin/screen-search"
 
-  // Settings come from the same shell.json entry the bar widget persists to.
-  readonly property var settings: Model.findEntry(shell ? shell.shellConfig : null, pluginId)
+  // Settings come from shell.json, the file the bar widget persists into.
+  //
+  // Read from the document, not from the API. `shell` here is
+  // services/PluginShellApi.qml, which has no shellConfig at all -- that
+  // property belongs to the host's own shell.qml. Asking the façade for it
+  // yielded undefined, so Model.findEntry() was handed no document and
+  // returned {}, every setting fell through to its manifest default, and
+  // nothing warned.
+  //
+  // The file, not `shell.barConfig`: barConfig is a deep copy of
+  // shellConfig.bar taken before the user's file is parsed (shell.qml:116), so
+  // it can answer with a packaged default the user has already overridden, and
+  // it holds top-level bar.layout entries only. This plugin is hosted in a
+  // drawer (t1nk33r.nook's items[]), a shape barConfig does not show and
+  // updateEntryInline() never writes. One document, read once per change, is
+  // also one consistent answer: a split between barConfig and a disk read
+  // could disagree mid-write.
+  property var shellConfigDocument: null
+  readonly property var settings: Model.findEntry(shellConfigDocument, pluginId)
   readonly property var defaults: manifest && manifest.barWidget && manifest.barWidget.defaults ? manifest.barWidget.defaults : {}
   function setting(k, fb) {
     var v = settings[k]; if (v === undefined || v === null || v === "") v = defaults[k]
     return v === undefined || v === null || v === "" ? fb : v
+  }
+
+  // The settings document. Read-only, and event-driven rather than polled:
+  // watchChanges covers an edit by anything else (the settings panel, a hand
+  // edit, `omarchy bar set`), and the barConfig connection below covers this
+  // plugin's own write without waiting on inotify.
+  readonly property string shellConfigPath: (Quickshell.env("HOME") || "") + "/.config/omarchy/shell.json"
+  FileView {
+    id: shellConfigFile
+    path: root.shellConfigPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.noteShellConfig(text())
+    onLoadFailed: root.noteShellConfig("")
+    onFileChanged: reload()
+  }
+
+  // The host rewrites shell.json through updateEntryInline and re-pushes
+  // barConfig in the same pass, so a barConfig change is the in-process signal
+  // that the file on disk has moved.
+  Connections {
+    target: root.shell
+    ignoreUnknownSignals: true
+    function onBarConfigChanged() { shellConfigFile.reload() }
+  }
+
+  function noteShellConfig(raw) {
+    var parsed = Model.shellConfigIn(raw)
+    // A read that lands inside the host's atomic replace must not discard the
+    // settings already in hand, so the last good document stands until a
+    // readable one arrives.
+    if (parsed === null && root.shellConfigDocument !== null) return
+    root.shellConfigDocument = parsed
   }
 
   property bool opened: false
