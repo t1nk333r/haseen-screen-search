@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -406,15 +407,15 @@ Item {
       id: glassCard
 
       readonly property real pad: Style.spacing.popupPadding
-      readonly property color glassInk: Color.popups.text
+      readonly property color glassInk: Commons.Color.popups.text
 
       anchors.centerIn: parent
       implicitWidth: content.implicitWidth + pad * 2
       implicitHeight: content.implicitHeight + pad * 2
       radius: Math.max(Style.cornerRadius, Style.space(22))
-      color: Util.alpha(Color.popups.background, 0.92)
+      color: Util.alpha(Commons.Color.popups.background, 0.92)
       border.width: 1
-      border.color: Util.alpha(Color.popups.border, 0.6)
+      border.color: Util.alpha(Commons.Color.popups.border, 0.6)
 
       opacity: root.opened ? 1 : 0
       scale: root.opened ? 1 : 0.96

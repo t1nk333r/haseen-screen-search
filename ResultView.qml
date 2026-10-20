@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -8,8 +9,8 @@ Item {
   id: root
   required property var osd
 
-  readonly property color fg: Color.popups.text
-  readonly property color dim: Util.alpha(Color.popups.text, 0.62)
+  readonly property color fg: Commons.Color.popups.text
+  readonly property color dim: Util.alpha(Commons.Color.popups.text, 0.62)
   readonly property string family: Style.font.family
   readonly property int maxWidth: Style.space(460)
   readonly property int previewSize: Number(osd.setting("previewSize", 160))
@@ -44,7 +45,7 @@ Item {
     Text {
       visible: osd.state === "selecting" || osd.state === "processing" || osd.state === "failed"
       text: osd.state === "failed" ? osd.message : osd.busyLabel
-      color: osd.state === "failed" ? Color.urgent : root.dim
+      color: osd.state === "failed" ? Commons.Color.urgent : root.dim
       font.family: root.family; font.pixelSize: Style.font.body
     }
 
@@ -56,7 +57,7 @@ Item {
         width: root.previewSize; height: root.previewSize
         radius: Style.spacing.labelGap
         color: Util.alpha(root.fg, 0.05)
-        borderSpec: Border.controlSpec("normal", root.fg, Color.accent)
+        borderSpec: Border.controlSpec("normal", root.fg, Commons.Color.accent)
         Image {
           anchors.fill: parent; anchors.margins: Style.space(2)
           fillMode: Image.PreserveAspectFit
@@ -69,7 +70,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         Text {
           text: osd.caps.visual ? "Enter · search with " + osd.providerName : osd.providerName + " has no visual search"
-          color: osd.caps.visual ? root.fg : Color.urgent
+          color: osd.caps.visual ? root.fg : Commons.Color.urgent
           font.family: root.family; font.pixelSize: Style.font.body
         }
         Text {
@@ -107,7 +108,7 @@ Item {
     Text {
       visible: osd.state === "result" && osd.message !== ""
       text: osd.message
-      color: Color.accent; font.family: root.family; font.pixelSize: Style.font.bodySmall
+      color: Commons.Color.accent; font.family: root.family; font.pixelSize: Style.font.bodySmall
     }
 
     // --- provider picker ("Search with…") ----------------------------------

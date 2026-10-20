@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -87,7 +88,7 @@ BarWidget {
 
       Text {
         text: "Screen Search"
-        color: root.bar ? root.bar.foreground : Color.foreground
+        color: root.bar ? root.bar.foreground : Commons.Color.foreground
         font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true
         bottomPadding: Style.spacing.sm
       }
