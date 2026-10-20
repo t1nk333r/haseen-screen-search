@@ -1,7 +1,7 @@
 # Screen Search
 
-Understand anything on your screen. A native Omarchy (`omarchy-shell`) plugin
-that adds OCR and Circle-to-Search: select a screen region, then search, copy,
+Understand anything on your screen. A [haseen](https://github.com/t1nk333r/haseen) plugin
+(also runs natively on Omarchy's `omarchy-shell`) that adds OCR and Circle-to-Search: select a screen region, then search, copy,
 translate, open a link, decode a QR, or reverse-image-search it — from a bar
 magnifier, a keybind, or the CLI.
 
@@ -94,6 +94,14 @@ nothing.
   Cancel. Clipboard mode stays the default.
 
 ## Install / uninstall
+
+On [haseen](https://github.com/t1nk333r/haseen):
+
+```bash
+haseen plugin install https://github.com/t1nk333r/haseen-screen-search
+```
+
+Also runs on Omarchy, from a checkout:
 
 ```
 ./install.sh              # deps, enable widget, keybindings, CLI symlink, first-run provider
