@@ -4,16 +4,49 @@ on:
   pull_request:
   schedule:
     - cron: '17 6 * * 1'   # weekly: catches provider-endpoint rot via doctor
+# A pull request runs the suite only when its changes reach code the suite
+# reads; a push to master, the weekly run and a manual run always run it. The
+# job always reports, so a docs-only pull request is green, not pending.
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The pull request's base commit must be in the clone to diff against.
+          fetch-depth: 0
+      # Documentation selects nothing; any other path, the CI itself, or a
+      # failed diff runs the suite (the suite covers the whole plugin).
+      - name: Select the checks this change affects
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          decide() { # <suite> <reason>
+            printf 'suite=%s\n' "$1" >>"$GITHUB_OUTPUT"
+            printf 'CI scope: suite=%s -- %s\n' "$1" "$2" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          }
+          [[ $EVENT == pull_request ]] || decide true "a $EVENT event runs every check"
+          changed="$(git diff --name-only "$BASE_SHA" HEAD)" || decide true "cannot diff against $BASE_SHA"
+          while IFS= read -r f; do
+            [[ -n $f ]] || continue
+            case "$f" in
+              *.md | LICENSE*) ;;
+              *) decide true "$f reaches the suite" ;;
+            esac
+          done <<<"$changed"
+          decide false "documentation only ($(grep -c . <<<"$changed") path(s) since ${BASE_SHA:0:12})"
       - name: Install deps
+        if: steps.scope.outputs.suite == 'true'
         run: sudo apt-get update && sudo apt-get install -y jq shellcheck
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.suite == 'true'
         with: { node-version: '22' }
       - name: Offline test suite
+        if: steps.scope.outputs.suite == 'true'
         run: bash tests/run.sh
       - name: Provider endpoint health (network)
         if: github.event_name == 'schedule'

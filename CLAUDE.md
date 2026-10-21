@@ -50,7 +50,9 @@ Omarchy shell plugin: OCR + Circle-to-Search. Read this before changing code.
   disabled by `SCREEN_SEARCH_NO_AUTOPASTE=1`; upload tests set
   `SCREEN_SEARCH_DELETE_DELAY=0` and their own scenario `curl`. Includes the
   node suite for `Model.js`, a shellcheck stage, and an assertion floor
-  (`MIN_ASSERTIONS`) — raise the floor when you add tests.
+  (`MIN_ASSERTIONS`) — raise the floor when you add tests. CI
+  (`.github/workflows/ci.yml`) runs it on every push to `master` and weekly;
+  a pull request that only changes documentation skips it.
 - QML has no headless harness (known gap; no qmllint — needs Quickshell
   stubs). After QML changes: `omarchy restart shell` (keep-loaded overlays do
   NOT hot-reload) and check `journalctl --user _COMM=quickshell` for errors.
